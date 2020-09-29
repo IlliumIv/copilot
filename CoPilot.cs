@@ -359,7 +359,8 @@ namespace CoPilot
             //base.DrawSettings();
 
             // Draw Custom GUI
-            ImGuiDrawSettings.DrawImGuiSettings();            
+            if (Settings.Enable)
+                ImGuiDrawSettings.DrawImGuiSettings();            
         }
         public override void Render()
         {
