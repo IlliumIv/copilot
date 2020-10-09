@@ -360,7 +360,7 @@ namespace CoPilot
 
             // Draw Custom GUI
             if (Settings.Enable)
-                ImGuiDrawSettings.DrawImGuiSettings();            
+                ImGuiDrawSettings.DrawImGuiSettings();
         }
         public override void Render()
         {
@@ -373,7 +373,8 @@ namespace CoPilot
                 }
 
 
-                if (!GameController.Area.CurrentArea.IsHideout && !GameController.Area.CurrentArea.IsTown /*&& !IngameUi.StashElement.IsVisible && !IngameUi.OpenRightPanel.IsVisible*/ )
+                if (!GameController.Area.CurrentArea.IsHideout && !GameController.Area.CurrentArea.IsTown && !GameController.IngameState.IngameUi.StashElement.IsVisible && 
+                    !GameController.IngameState.IngameUi.NpcDialog.IsVisible && !GameController.IngameState.IngameUi.SellWindow.IsVisible)
                 {
 
                     localPlayer = GameController.Game.IngameState.Data.LocalPlayer;
@@ -394,13 +395,6 @@ namespace CoPilot
                         corpses = GameController.Entities.Where(x => x.IsValid && !x.IsHidden && x.IsHostile && x.IsDead && x.IsTargetable && x.GetComponent<Monster>() != null);
                     if (Settings.autoGolemEnabled) { }
                         summons.UpdateSummons();
-
-                    //int volaCount = GameController.Entities.Where(x => x.Path.Contains("VolatileDeadCore")).Count();
-                    //LogError("Vola: " + volaCount.ToString());
-
-                    // Feature request
-                    //  LeHeupOfSoupheute um 19:49 Uhr
-                    //  Would it be possible to add convocate on nearby enemies? Pretty please
 
                     // Option for Cyclone on destroyable stuff ?
                     // Chest isTargetable && !isOpen && isHostile
@@ -438,7 +432,7 @@ namespace CoPilot
 
 
                     // Do not Cast anything while we are untouchable or Chat is Open
-                    if (buffs.Exists(x => x.Name == "grace_period") /*|| GameController.IngameState.IngameUi.ChatBox.IsVisible*/) // Chatbox always true since 08.08.2020 offset
+                    if (buffs.Exists(x => x.Name == "grace_period") || GameController.IngameState.IngameUi.ChatBox.Parent.Parent.Parent.GetChildAtIndex(3).IsVisible)
                         return;
 
 
@@ -452,16 +446,26 @@ namespace CoPilot
                         if (!skill.IsOnSkillBar || skill.SkillSlotIndex < 1 || skill.SkillSlotIndex == 2 || player.CurMana < manaCost)
                             continue;
 
+                        #region Mirage Archer
                         if (Settings.mirageEnabled)
                         {
-                            skill.Stats.TryGetValue(GameStat.NumberOfMirageArchersAllowed, out int mirage);
-                            if ((DateTime.Now - lastMirage).TotalMilliseconds > 500 && mirage >= 1 && CountEnemysAroundMouse(Settings.mirageRange.Value) > 0 &&
-                                !buffs.Exists(x => x.Name == "mirage_archer_visual_buff" && x.Timer > 0.5))
+                            try
                             {
-                                KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                lastMirage = DateTime.Now;
+                                skill.Stats.TryGetValue(GameStat.NumberOfMirageArchersAllowed, out int mirage);
+                                if ((DateTime.Now - lastMirage).TotalMilliseconds > 500 && mirage >= 1 && CountEnemysAroundMouse(Settings.mirageRange.Value) > 0 &&
+                                !buffs.Exists(x => x.Name == "mirage_archer_visual_buff" && x.Timer > 0.5))
+                                {
+                                    KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                    lastMirage = DateTime.Now;
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                LogError(e.ToString());
                             }
                         }
+                        #endregion
+
                         #region Enduring Cry / Rallying Cry
                         if (Settings.enduringCryEnabled || Settings.rallyingCryEnabled)
                         {
@@ -648,11 +652,11 @@ namespace CoPilot
                                         lastAutoGolem = DateTime.Now;
                                     }
                                 }
-                                if (Settings.autoZombieEnabled && (DateTime.Now - lastAutoGolem).TotalMilliseconds > 1200 && !isCasting && !isAttacking && GetMonsterWithin(600) == 0
-                                    && skill.Id == SkillInfo.raiseZombie.Id && CountCorpsesAroundMouse(mouseAutoSnapRange) > 0)
+                                if (Settings.autoZombieEnabled && skill.Id == SkillInfo.raiseZombie.Id)
                                 {
                                     skill.Stats.TryGetValue(GameStat.NumberOfZombiesAllowed, out int maxZombies);
-                                    if (summons.zombies < maxZombies)
+                                    if (summons.zombies < maxZombies && !isCasting && !isAttacking && GetMonsterWithin(600) == 0
+                                    && CountCorpsesAroundMouse(mouseAutoSnapRange) > 0 && (DateTime.Now - lastAutoGolem).TotalMilliseconds > 1200)
                                     {
                                         KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         lastAutoGolem = DateTime.Now;
@@ -933,6 +937,26 @@ namespace CoPilot
                             }
                         }
                         #endregion
+
+                        #region Detonate Mines ( to be done )
+                        if (Settings.minesEnabled)
+                        {
+                            try
+                            {
+                                var remoteMines = localPlayer.GetComponent<Actor>().DeployedObjects.Where(x => x.Entity != null && x.Entity.Path == "Metadata/MiscellaneousObjects/RemoteMine").ToList();
+
+                                // Removed Logic
+                                // What should a proper Detonator do and when ?
+                                // Detonate Mines when they have the chance to hit a target (Range), include min. mines ?
+                                // Internal delay 500-1000ms ?
+                                // Removing/Filter enemys that are not "deployed" yet / invunerale from enemys list ? 
+                            }
+                            catch (Exception e)
+                            {
+                                LogError(e.ToString());
+                            }
+                        }
+                        #endregion
                     }
 
                     #region Delve Flare
@@ -965,30 +989,6 @@ namespace CoPilot
                                     KeyPress(Settings.customKey);
                                     lastCustom = DateTime.Now;
                                 }
-
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            LogError(e.ToString());
-                        }
-                    }
-                    #endregion
-
-                    #region Detonate Mines ( to be done )
-                    if (Settings.minesEnabled)
-                    {
-                        try
-                        {
-                            if (GCD())
-                            {
-                                var remoteMines = localPlayer.GetComponent<Actor>().DeployedObjects.Where(x => x.Entity != null && x.Entity.Path == "Metadata/MiscellaneousObjects/RemoteMine").ToList();
-
-                                // Removed Logic
-                                // What should a proper Detonator do and when ?
-                                // Detonate Mines when they have the chance to hit a target (Range), include min. mines ?
-                                // Internal delay 500-1000ms ?
-                                // Removing/Filter enemys that are not "deployed" yet / invunerale from enemys list ? 
 
                             }
                         }
