@@ -127,7 +127,9 @@ namespace CoPilot
         public RangeNode<int> autoBoneMax = new RangeNode<int>(0, 0, 15);
         public RangeNode<int> autoGolemDropBearMax = new RangeNode<int>(0, 0, 15);
         public RangeNode<int> autoGolemAvoidRange = new RangeNode<int>(1000, 100, 2000);
+
         public ToggleNode autoZombieEnabled = new ToggleNode(false);
+        public RangeNode<int> autoZombieMax = new RangeNode<int>(0, 0, 20);
         #endregion
 
         #region Auto Curse
