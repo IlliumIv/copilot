@@ -35,25 +35,14 @@ namespace CoPilot
         internal List<ActorVaalSkill> vaalSkills = new List<ActorVaalSkill>();
 
         private readonly int mouseAutoSnapRange = 250;
-        private DateTime lastPhaserun = new DateTime();
-        private DateTime lastMoltenShell = new DateTime();
-        private DateTime lastWarCry = new DateTime();
         private DateTime lastTimeAny = new DateTime();
         private DateTime lastDelveFlare = new DateTime();
-        private DateTime lastVortex = new DateTime();
-        private DateTime lastBloodRage = new DateTime();
-        private DateTime lastdoedreEffigy = new DateTime();
         private DateTime lastStackSkill = new DateTime();
         private DateTime lastCustom = new DateTime();
-        private DateTime lastOfferings = new DateTime();
-        private DateTime lastAutoGolem = new DateTime();
-        private DateTime lastBrandRecall = new DateTime();
-        private DateTime lastTempestShield = new DateTime();
         private DateTime lastMirage = new DateTime();
-        private DateTime lastConvocation = new DateTime();
+        private DateTime lastAutoGolem = new DateTime();
         private DateTime lastCurse = new DateTime();
-        private DateTime lastBladeVortex = new DateTime();
-        private DateTime lastBladeBlast = new DateTime();
+
         private int bladeBlastUseIndex = 0;
         private int lastBladeBlastUseIndex = 0;
         private readonly int delay = 70;
@@ -142,10 +131,9 @@ namespace CoPilot
             {
                 var monsterPosition = corpse.Pos;
                 var screenPosition = GameController.IngameState.Camera.WorldToScreen(monsterPosition);
-                var cursorPosition = MouseTools.GetCursorPosition();
 
-                var xDiff = screenPosition.X - cursorPosition.X;
-                var yDiff = screenPosition.Y - cursorPosition.Y;
+                var xDiff = screenPosition.X - GameController.IngameState.CurentUElementPosX;
+                var yDiff = screenPosition.Y - GameController.IngameState.CurentUElementPosY;
                 var monsterDistanceSquare = (xDiff * xDiff + yDiff * yDiff);
 
                 if (monsterDistanceSquare <= maxDistanceSquare)
@@ -164,10 +152,9 @@ namespace CoPilot
             {
                 var monsterPosition = enemy.Pos;
                 var screenPosition = GameController.IngameState.Camera.WorldToScreen(monsterPosition);
-                var cursorPosition = MouseTools.GetCursorPosition();
 
-                var xDiff = screenPosition.X - cursorPosition.X;
-                var yDiff = screenPosition.Y - cursorPosition.Y;
+                var xDiff = screenPosition.X - GameController.IngameState.CurentUElementPosX;
+                var yDiff = screenPosition.Y - GameController.IngameState.CurentUElementPosY;
                 var monsterDistanceSquare = (xDiff * xDiff + yDiff * yDiff);
 
                 if (monsterDistanceSquare <= maxDistanceSquare)
@@ -210,10 +197,9 @@ namespace CoPilot
             {
                 var monsterPosition = entity.Pos;
                 var screenPosition = GameController.IngameState.Camera.WorldToScreen(monsterPosition);
-                var cursorPosition = MouseTools.GetCursorPosition();
 
-                var xDiff = screenPosition.X - cursorPosition.X;
-                var yDiff = screenPosition.Y - cursorPosition.Y;
+                var xDiff = screenPosition.X - GameController.IngameState.CurentUElementPosX;
+                var yDiff = screenPosition.Y - GameController.IngameState.CurentUElementPosY;
                 var monsterDistanceSquare = (xDiff * xDiff + yDiff * yDiff);
 
                 if (monsterDistanceSquare <= maxDistanceSquare)
@@ -232,10 +218,15 @@ namespace CoPilot
             {
                 var monsterPosition = enemy.Pos;
                 var screenPosition = GameController.IngameState.Camera.WorldToScreen(monsterPosition);
+                /*    Old Code will not work when playing on 2nd Monitor
                 var cursorPosition = MouseTools.GetCursorPosition();
 
                 var xDiff = screenPosition.X - cursorPosition.X;
                 var yDiff = screenPosition.Y - cursorPosition.Y;
+                */
+                var xDiff = screenPosition.X - GameController.IngameState.CurentUElementPosX;
+                var yDiff = screenPosition.Y - GameController.IngameState.CurentUElementPosY;
+
                 var monsterDistanceSquare = (xDiff * xDiff + yDiff * yDiff);
                 if (monsterDistanceSquare <= maxDistanceSquare && !EntityHasCurse(enemy))
                 {
@@ -398,6 +389,7 @@ namespace CoPilot
         {
             base.AreaChange(area);
             SkillInfo.ResetSkills();
+            skills = null;
             bladeBlastUseIndex = 0;
             lastBladeBlastUseIndex = 0;
 
@@ -444,6 +436,8 @@ namespace CoPilot
                     if (Settings.autoGolemEnabled) { }
                         summons.UpdateSummons();
 
+                    SkillInfo.GetDeltaTime();
+
                     #region Auto Quit
                     if (Settings.autoQuitEnabled)
                     {
@@ -483,10 +477,7 @@ namespace CoPilot
                     // Currently thats unanavailable in API.
                     foreach (var skill in skills)
                     {
-                        if (!GCD())
-                            break;
-                        skill.Stats.TryGetValue(GameStat.ManaCost, out int manaCost);
-                        if (!skill.IsOnSkillBar || skill.SkillSlotIndex < 1 || skill.SkillSlotIndex == 2 || player.CurMana < manaCost)
+                        if (!skill.IsOnSkillBar || skill.SkillSlotIndex < 1 || skill.SkillSlotIndex == 2)
                             continue;
 
                         #region Mirage Archer
@@ -509,56 +500,21 @@ namespace CoPilot
                         }
                         #endregion
 
-                        #region Enduring Cry / Rallying Cry
-                        if (Settings.enduringCryEnabled || Settings.rallyingCryEnabled)
-                        {
+                        #region Enduring Cry
+                        if (Settings.enduringCryEnabled)
+                        {                            
                             try
                             {
-                                if ((DateTime.Now - lastWarCry).TotalMilliseconds > Settings.warCryCooldown.Value && skill.Id == SkillInfo.enduringCry.Id || skill.Id == SkillInfo.rallyingCry.Id)
+                                if (skill.Id == SkillInfo.enduringCry.Id)
                                 {
-                                    if (Settings.enduringCryEnabled && Settings.rallyingCryEnabled && skills.Exists(x => x.Id == SkillInfo.enduringCry.Id) && skills.Exists(x => x.Id == SkillInfo.rallyingCry.Id))
+                                    if(SkillInfo.ManageCooldown(SkillInfo.enduringCry, skill))
                                     {
-                                        if (GetMonsterWithin(Settings.warCryTriggerRange) >= 1 || player.HPPercentage < 0.90f || (Settings.warCryKeepRage &&
-                                            ((DateTime.Now - lastWarCry).TotalMilliseconds > 3800 || !buffs.Exists(b => b.Name == "rage" && b.Charges >= 50))))
+                                        if (GetMonsterWithin(Settings.warCryTriggerRange) >= 1 || player.HPPercentage < 0.90f || Settings.warCryKeepRage)
                                         {
-                                            if (!buffs.Exists(x => x.Name == "endurance_charge" && x.Timer * 1000 > Settings.warCryCooldown.Value + 100) ||
-                                                buffs.Exists(x => x.Name == "inspiring_cry" && x.Timer * 1000 > Settings.warCryCooldown.Value + 100))
-                                            {
-                                                if (skill.Id == SkillInfo.rallyingCry.Id)
-                                                    continue;
-                                                if (skill.Id == SkillInfo.enduringCry.Id)
-                                                {
-                                                    KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                                    lastWarCry = DateTime.Now;
-                                                }
-                                            }
-                                            else if (skill.Id == SkillInfo.rallyingCry.Id)
-                                            {
-                                                KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                                lastWarCry = DateTime.Now;
-                                            }
-
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         }
-                                    }
-                                    else if (Settings.enduringCryEnabled || Settings.rallyingCryEnabled)
-                                    {
-                                        if (GetMonsterWithin(Settings.warCryTriggerRange) >= 1 || player.HPPercentage < 0.90f || (Settings.warCryKeepRage &&
-                                            ((DateTime.Now - lastWarCry).TotalMilliseconds > 3800 || !buffs.Exists(b => b.Name == "rage" && b.Charges >= 50))))
-                                        {
-                                            if (Settings.enduringCryEnabled && skill.Id == SkillInfo.enduringCry.Id)
-                                            {
-                                                KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                                lastWarCry = DateTime.Now;
-                                            }
-                                            else if (Settings.rallyingCryEnabled && skill.Id == SkillInfo.rallyingCry.Id)
-                                            {
-                                                KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                                lastWarCry = DateTime.Now;
-                                            }
-
-                                        }
-                                    }
-                                }
+                                    }                                    
+                                }                                
                             }
                             catch (Exception e)
                             {
@@ -572,13 +528,15 @@ namespace CoPilot
                         {
                             try
                             {
-                                if ((DateTime.Now - lastPhaserun).TotalMilliseconds > Settings.phaserunDelay.Value && skill.Id == SkillInfo.phaserun.Id)
+                                if (skill.Id == SkillInfo.phaserun.Id)
                                 {
-                                    if (!isAttacking && isMoving && (!buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer < 0.1)))
+                                    if(SkillInfo.ManageCooldown(SkillInfo.phaserun, skill))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastPhaserun = DateTime.Now;
-                                    }
+                                        if (!isAttacking && isMoving && (!buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer < 0.1)))
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -593,27 +551,28 @@ namespace CoPilot
                         {
                             try
                             {
-                                // Cooldown reset starts on Buff expire
-                                if (buffs.Exists(x => x.Name == SkillInfo.moltenShell.BuffName) || buffs.Exists(x => x.Name == SkillInfo.steelSkin.BuffName) || buffs.Exists(x => x.Name == SkillInfo.boneArmour.BuffName) 
-                                    || buffs.Exists(x => x.Name == SkillInfo.arcaneCloak.BuffName))
+                                if (skill.Id == SkillInfo.moltenShell.Id || skill.Id == SkillInfo.steelSkin.Id || skill.Id == SkillInfo.boneArmour.Id || skill.Id == SkillInfo.arcaneCloak.Id)
                                 {
-                                    lastMoltenShell = DateTime.MaxValue;
-                                }
-                                else
-                                {
-                                    if (lastMoltenShell == DateTime.MaxValue)
+                                    // Cooldown reset starts on Buff expire
+                                    if (buffs.Exists(x => x.Name == SkillInfo.moltenShell.BuffName) || buffs.Exists(x => x.Name == SkillInfo.steelSkin.BuffName) || buffs.Exists(x => x.Name == SkillInfo.boneArmour.BuffName)
+                                        || buffs.Exists(x => x.Name == SkillInfo.arcaneCloak.BuffName))
                                     {
-                                        lastMoltenShell = DateTime.Now;
+                                        SkillInfo.moltenShell.Cooldown = -1;
                                     }
-                                }
-                                if ((DateTime.Now - lastMoltenShell).TotalMilliseconds > Settings.moltenShellDelay.Value &&
-                                    (skill.Id == SkillInfo.moltenShell.Id || skill.Id == SkillInfo.steelSkin.Id || skill.Id == SkillInfo.boneArmour.Id || skill.Id == SkillInfo.arcaneCloak.Id))
-                                {
-                                    if ((GetMonsterWithin(Settings.moltenShellRange) >= 1))
+                                    else
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastMoltenShell = DateTime.MaxValue;
+                                        if (SkillInfo.moltenShell.Cooldown == -1 && skill.Cooldown > 0)
+                                        {
+                                            SkillInfo.moltenShell.Cooldown = 0;
+                                        }
                                     }
+                                    if (SkillInfo.ManageCooldown(SkillInfo.moltenShell, skill))
+                                    {
+                                        if (GetMonsterWithin(Settings.moltenShellRange) >= 1)
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -628,14 +587,16 @@ namespace CoPilot
                         {
                             try
                             {
-                                if ((DateTime.Now - lastBloodRage).TotalMilliseconds > Settings.bloodRageDelay.Value && skill.Id == SkillInfo.bloodRage.Id)
+                                if(skill.Id == SkillInfo.bloodRage.Id)
                                 {
-                                    if (!buffs.Exists(b => b.Name == SkillInfo.bloodRage.BuffName && b.Timer > 1.0) && (GetMonsterWithin(Settings.bloodRageRange) >= 1))
+                                    if(SkillInfo.ManageCooldown(SkillInfo.bloodRage, skill, 1000))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastBloodRage = DateTime.Now;
-                                    }
-                                }
+                                        if (!buffs.Exists(b => b.Name == SkillInfo.bloodRage.BuffName && b.Timer > 1.0) && (GetMonsterWithin(Settings.bloodRageRange) >= 1))
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
+                                }                                
                             }
                             catch (Exception e)
                             {
@@ -719,13 +680,15 @@ namespace CoPilot
                         {
                             try
                             {
-                                if ((DateTime.Now - lastVortex).TotalMilliseconds > Settings.vortexDelay.Value && skill.Id == SkillInfo.vortex.Id)
+                                if (skill.Id == SkillInfo.vortex.Id)
                                 {
-                                    if (GetMonsterWithin(Settings.vortexRange) >= 1 || (Settings.vortexFrostbolt && skills.Any(x => x.Id == SkillInfo.frostbolt.Id && x.SkillUseStage > 2) ))
+                                    if(SkillInfo.ManageCooldown(SkillInfo.vortex, skill))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastVortex = DateTime.Now;
-                                    }
+                                        if (GetMonsterWithin(Settings.vortexRange) >= 1 || (Settings.vortexFrostbolt && skills.Any(x => x.Id == SkillInfo.frostbolt.Id && x.SkillUseStage > 2)))
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -775,13 +738,15 @@ namespace CoPilot
                         {
                             try
                             {
-                                if ((DateTime.Now - lastdoedreEffigy).TotalMilliseconds > Settings.doedreEffigyDelay.Value && skill.Id == SkillInfo.doedreEffigy.Id)
+                                if (skill.Id == SkillInfo.doedreEffigy.Id)
                                 {
-                                    if (CountEnemysAroundMouse(350) > 0)
+                                    if(SkillInfo.ManageCooldown(SkillInfo.doedreEffigy, skill))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastdoedreEffigy = DateTime.Now;
-                                    }
+                                        if (CountEnemysAroundMouse(350) > 0)
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -796,14 +761,16 @@ namespace CoPilot
                         {
                             try
                             {
-                                if (((!Settings.offeringsUseWhileCasting && !isCasting && !isAttacking) || Settings.offeringsUseWhileCasting) && (DateTime.Now - lastOfferings).TotalMilliseconds > 500 &&
+                                if (((!Settings.offeringsUseWhileCasting && !isCasting && !isAttacking) || Settings.offeringsUseWhileCasting) &&
                                     (skill.Id == SkillInfo.spiritOffering.Id || skill.Id == SkillInfo.boneOffering.Id || skill.Id == SkillInfo.fleshOffering.Id))
                                 {
-                                    if (GetMonsterWithin(Settings.offeringsTriggerRange) >= Settings.offeringsMinEnemys && !buffs.Exists(x => x.Name == "active_offering" ) && CountCorpsesAroundMouse(mouseAutoSnapRange) > 0)
+                                    if(SkillInfo.ManageCooldown(SkillInfo.spiritOffering, skill))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastOfferings = DateTime.Now;
-                                    }
+                                        if ((!Settings.offeringsUseWhileCasting && !isCasting && !isAttacking) || Settings.offeringsUseWhileCasting && GetMonsterWithin(Settings.offeringsTriggerRange) >= Settings.offeringsMinEnemys && !buffs.Exists(x => x.Name == "active_offering") && CountCorpsesAroundMouse(mouseAutoSnapRange) > 0)
+                                    {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -841,8 +808,15 @@ namespace CoPilot
                         {
                             try
                             {
-                                if ((DateTime.Now - lastBrandRecall).TotalMilliseconds > Settings.brandRecallCooldown && skill.Id == SkillInfo.brandRecall.Id)
+                                if (skill.Id == SkillInfo.brandRecall.Id)
                                 {
+                                    if (SkillInfo.ManageCooldown(SkillInfo.brandRecall, skill))
+                                    {
+                                        if (GetMonsterWithin(Settings.brandRecallTriggerRange) >= Settings.brandRecallMinEnemys)
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }
                                     // Once a Brand Skill is linked with Archemage for example, it will show incorrect stats for 1 frame IsUsing turns true, even when in down, SkillUseStage 3 etc.
 
                                     //ActorSkill stormBrand = skills.Find(x => x.InternalName == "storm_brand");
@@ -859,11 +833,7 @@ namespace CoPilot
                                     //LogError("Brand Active: " + activeBrands.ToString());
                                     //if (activeBrands >= Settings.brandRecallMinBrands)
                                     //{
-                                        if (GetMonsterWithin(Settings.brandRecallTriggerRange) >= Settings.brandRecallMinEnemys)
-                                        {
-                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                            lastBrandRecall = DateTime.Now;
-                                        }
+                                        
                                     //}                                    
                                 }   
                             }
@@ -879,14 +849,19 @@ namespace CoPilot
                         {
                             try
                             {
-                                if (((!Settings.tempestShieldUseWhileCasting && !isCasting && !isAttacking) || Settings.tempestShieldUseWhileCasting) && (DateTime.Now - lastTempestShield).TotalMilliseconds > 1200 && skill.Id == SkillInfo.tempestShield.Id)
+                                if (skill.Id == SkillInfo.tempestShield.Id)
                                 {
-                                    if (!buffs.Exists(x => x.Name == SkillInfo.tempestShield.BuffName && x.Timer > 1.0) && GetMonsterWithin(Settings.tempestShieldTriggerRange) >= Settings.tempestShieldMinEnemys)
+                                    if (SkillInfo.ManageCooldown(SkillInfo.tempestShield, skill))
                                     {
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        lastTempestShield = DateTime.Now;
-                                    }                                   
-                                }
+                                        if ((!Settings.tempestShieldUseWhileCasting && !isCasting && !isAttacking) || Settings.tempestShieldUseWhileCasting)
+                                        {
+                                            if (!buffs.Exists(x => x.Name == SkillInfo.tempestShield.BuffName && x.Timer > 1.0) && GetMonsterWithin(Settings.tempestShieldTriggerRange) >= Settings.tempestShieldMinEnemys)
+                                            {
+                                                KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                            }
+                                        }
+                                    }                                    
+                                }                                
                             }
                             catch (Exception e)
                             {
@@ -904,15 +879,16 @@ namespace CoPilot
                                     (skill.Id == SkillInfo.cyclone.Id || skill.Id == SkillInfo.iceNova.Id || skill.Id == SkillInfo.flickerStrike.Id))
                                 {
                                     autoAttackUpdate = DateTime.Now;
-                                    if ((Settings.autoAttackLeftMouseCheck.Value && !MouseTools.IsMouseLeftPressed() || !Settings.autoAttackLeftMouseCheck.Value) &&
-                                        GetMonsterWithin(Settings.autoAttackRange) >= 1)
+                                    if ((Keyboard.IsKeyDown((int)Settings.autoAttackPickItKey.Value) && Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex))) || Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !isAttacking && autoAttackRunning > DateTime.MinValue && (DateTime.Now - autoAttackRunning).TotalMilliseconds > 50)
                                     {
-                                        if ((Keyboard.IsKeyDown((int)Settings.autoAttackPickItKey.Value) && Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) || !isCasting && !isAttacking && autoAttackRunning > DateTime.MinValue && (DateTime.Now - autoAttackRunning).TotalMilliseconds > 100 && Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex))))
-                                        {
-                                            Keyboard.KeyUp(GetSkillInputKey(skill.SkillSlotIndex));
-                                            if (Settings.debugMode.Value)
-                                                LogMessage("Copilot: Detected Key Priority Problem due to User Input, fixing.");
-                                        }
+                                        Keyboard.KeyUp(GetSkillInputKey(skill.SkillSlotIndex));
+                                        if (Settings.debugMode.Value)
+                                            LogMessage("Copilot: Detected Key Priority Problem due to User Input, fixing.");
+                                        break;
+                                    }
+                                    if ((Settings.autoAttackLeftMouseCheck.Value && !MouseTools.IsMouseLeftPressed() || !Settings.autoAttackLeftMouseCheck.Value) 
+                                        && ((!Settings.autoAttackCurseCheck && GetMonsterWithin(Settings.autoAttackRange) >= 1) || (Settings.autoAttackCurseCheck && enemys.Any(x => x.Buffs.Exists(b => b.Name.Contains("curse")))) ))
+                                    {
                                         if (!Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !Keyboard.IsKeyDown((int)Settings.autoAttackPickItKey.Value))
                                         {
                                             Keyboard.KeyDown(GetSkillInputKey(skill.SkillSlotIndex));
@@ -925,6 +901,7 @@ namespace CoPilot
                                         autoAttackRunning = DateTime.MinValue;
                                     }
                                 }
+                                
                             }
                             catch (Exception e)
                             {
@@ -938,20 +915,21 @@ namespace CoPilot
                         {
                             try
                             {
-                                if (skill.Id == SkillInfo.convocation.Id && (DateTime.Now - lastConvocation).TotalMilliseconds > Settings.convocationCooldown)
+                                if (skill.Id == SkillInfo.convocation.Id)
                                 {
-                                    if (GetMonsterWithin(Settings.convocationAvoidUniqueRange, MonsterRarity.Unique) > 0)
-                                        return;
-                                    if (Math.Round(summons.GetLowestMinionHpp()) * 100 < Settings.convocationHp.Value)
+                                    if (SkillInfo.ManageCooldown(SkillInfo.convocation, skill))
                                     {
-                                        lastConvocation = DateTime.Now;
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    }           
-                                    else if (GetMonsterWithin(Settings.convocationMobRange) > 0 && (GetMinnionsWithin(Settings.convocationMinnionRange) / summons.minnions.Count) * 100 <= Settings.convocationMinnionPct)
-                                    {
-                                        lastConvocation = DateTime.Now;
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    }
+                                        if (GetMonsterWithin(Settings.convocationAvoidUniqueRange, MonsterRarity.Unique) > 0)
+                                            return;
+                                        if (Math.Round(summons.GetLowestMinionHpp()) * 100 < Settings.convocationHp.Value)
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                        else if (GetMonsterWithin(Settings.convocationMobRange) > 0 && (GetMinnionsWithin(Settings.convocationMinnionRange) / summons.minnions.Count) * 100 <= Settings.convocationMinnionPct)
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -987,13 +965,17 @@ namespace CoPilot
                         {
                             try
                             {
-                                if (skill.Id == SkillInfo.bladeVortex.Id)
-                                {
-                                    if (GetMonsterWithin(Settings.bladeVortexRange) > 0 && !buffs.Exists(x => x.Name == "blade_vortex_counter" && x.Charges >= 10) && (DateTime.Now - lastBladeVortex).TotalMilliseconds > Settings.bladeVortexCooldown)
+                                if (skill.Id == SkillInfo.bladeVortex.Id)                                    
+                                {                                    
+                                    skill.Stats.TryGetValue(GameStat.VirtualSupportAnticipationChargeGainIntervalMs, out int unleashCooldown);
+                                    if (SkillInfo.ManageCooldown(SkillInfo.bladeVortex, skill, unleashCooldown > 0 ? unleashCooldown * Settings.bladeVortexUnleashCount : 0))
                                     {
-                                        lastBladeVortex = DateTime.Now;
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    }
+                                        
+                                        if (GetMonsterWithin(Settings.bladeVortexRange) > 0 && !buffs.Exists(x => x.Name == "blade_vortex_counter" && x.Charges >= Settings.bladeVortexCount))
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
@@ -1010,11 +992,13 @@ namespace CoPilot
                             {
                                 if (skill.Id == SkillInfo.bladeBlast.Id)
                                 {
-                                    if (!isCasting && !isAttacking && (Settings.bladeBlastFastMode && ShouldBladeBlast(skill.TotalUses)  || !Settings.bladeBlastFastMode && CountBladeBlastEnitytiesNearMouse(Settings.bladeBlastEntityRange) > 0) && (DateTime.Now - lastBladeBlast).TotalMilliseconds > Settings.bladeBlastCooldown)
+                                    if (SkillInfo.ManageCooldown(SkillInfo.bladeBlast, skill))
                                     {
-                                        lastBladeBlast = DateTime.Now;
-                                        KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    }
+                                        if (!isCasting && !isAttacking && (Settings.bladeBlastFastMode && ShouldBladeBlast(skill.TotalUses) || !Settings.bladeBlastFastMode && CountBladeBlastEnitytiesNearMouse(Settings.bladeBlastEntityRange) > 0))
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        }
+                                    }                                    
                                 }
                             }
                             catch (Exception e)
