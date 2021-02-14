@@ -35,6 +35,7 @@ namespace CoPilot
         internal List<ActorVaalSkill> vaalSkills = new List<ActorVaalSkill>();
 
         private readonly int mouseAutoSnapRange = 250;
+        private float autoTabberCD = 200;
         private DateTime lastTimeAny = new DateTime();
         private DateTime lastDelveFlare = new DateTime();
         private DateTime lastStackSkill = new DateTime();
@@ -469,6 +470,24 @@ namespace CoPilot
                     }
                     #endregion
 
+                    #region Auto Map Tabber
+                    try
+                    {
+                        if (Settings.autoMapTabber && !Keyboard.IsKeyDown((int)Settings.InputKeyPickIt.Value))
+                        {
+                            if (SkillInfo.ManageCooldown(SkillInfo.autoMapTabber) && GameController.IngameState.IngameUi.Map.SmallMiniMap.IsVisibleLocal)
+                            {
+                                KeyPress(Keys.Tab);
+                                SkillInfo.autoMapTabber.Cooldown = 250;
+                            }
+                        }                        
+                    }
+                    catch (Exception e)
+                    {
+                        LogError(e.ToString());
+                    }
+                    #endregion
+
                     // Do not Cast anything while we are untouchable or Chat is Open
                     if (buffs.Exists(x => x.Name == "grace_period")) // 3.13 needs offset fix|| GameController.IngameState.IngameUi.ChatBox.Parent.Parent.Parent.GetChildAtIndex(3).IsVisible)
                         return;
@@ -568,7 +587,7 @@ namespace CoPilot
                                     }
                                     if (SkillInfo.ManageCooldown(SkillInfo.moltenShell, skill))
                                     {
-                                        if (GetMonsterWithin(Settings.moltenShellRange) >= 1)
+                                        if (GetMonsterWithin(Settings.moltenShellRange) >= 1 && (Math.Round(player.HPPercentage, 3) * 100 <= Settings.moltenShellHpPct.Value || player.MaxES > 0 && (Math.Round(player.ESPercentage, 3) * 100 < Settings.moltenShellEsPct.Value)))
                                         {
                                             KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         }
@@ -879,7 +898,7 @@ namespace CoPilot
                                     (skill.Id == SkillInfo.cyclone.Id || skill.Id == SkillInfo.iceNova.Id || skill.Id == SkillInfo.flickerStrike.Id))
                                 {
                                     autoAttackUpdate = DateTime.Now;
-                                    if ((Keyboard.IsKeyDown((int)Settings.autoAttackPickItKey.Value) && Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex))) || Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !isAttacking && autoAttackRunning > DateTime.MinValue && (DateTime.Now - autoAttackRunning).TotalMilliseconds > 50)
+                                    if ((Keyboard.IsKeyDown((int)Settings.InputKeyPickIt.Value) && Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex))) || Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !isAttacking && autoAttackRunning > DateTime.MinValue && (DateTime.Now - autoAttackRunning).TotalMilliseconds > 50)
                                     {
                                         Keyboard.KeyUp(GetSkillInputKey(skill.SkillSlotIndex));
                                         if (Settings.debugMode.Value)
@@ -889,7 +908,7 @@ namespace CoPilot
                                     if ((Settings.autoAttackLeftMouseCheck.Value && !MouseTools.IsMouseLeftPressed() || !Settings.autoAttackLeftMouseCheck.Value) 
                                         && ((!Settings.autoAttackCurseCheck && GetMonsterWithin(Settings.autoAttackRange) >= 1) || (Settings.autoAttackCurseCheck && enemys.Any(x => x.Buffs.Exists(b => b.Name.Contains("curse")))) ))
                                     {
-                                        if (!Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !Keyboard.IsKeyDown((int)Settings.autoAttackPickItKey.Value))
+                                        if (!Keyboard.IsKeyDown((int)GetSkillInputKey(skill.SkillSlotIndex)) && !Keyboard.IsKeyDown((int)Settings.InputKeyPickIt.Value))
                                         {
                                             Keyboard.KeyDown(GetSkillInputKey(skill.SkillSlotIndex));
                                             autoAttackRunning = DateTime.Now;

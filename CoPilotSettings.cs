@@ -43,6 +43,8 @@ namespace CoPilot
         #region Molten Shell
         public ToggleNode moltenShellEnabled = new ToggleNode(false);
         public RangeNode<int> moltenShellRange = new RangeNode<int>(550, 100, 1000);
+        public RangeNode<float> moltenShellHpPct = new RangeNode<float>(100, 0f, 100f);
+        public RangeNode<float> moltenShellEsPct = new RangeNode<float>(0f, 0f, 100f);
         #endregion
 
         #region Enduring Cry
@@ -100,7 +102,6 @@ namespace CoPilot
         #region AutoAttack Cyclone / Nova etc.
         public ToggleNode autoAttackEnabled = new ToggleNode(false);
         public ToggleNode autoAttackLeftMouseCheck = new ToggleNode(true);
-        public HotkeyNode autoAttackPickItKey = new HotkeyNode(Keys.Space);
         public RangeNode<int> autoAttackRange = new RangeNode<int>(500, 100, 2000);
         public ToggleNode autoAttackCurseCheck = new ToggleNode(false);
 
@@ -178,6 +179,10 @@ namespace CoPilot
         public RangeNode<int> brandRecallMinBrands = new RangeNode<int>(0, 0, 10);
         #endregion
 
+        #region Auto Map Tabber
+        public ToggleNode autoMapTabber = new ToggleNode(false);
+        #endregion
+
         #region Input Keys
         public HotkeyNode InputKey1 = new HotkeyNode(Keys.Z);
         public HotkeyNode InputKey3 = new HotkeyNode(Keys.Q);
@@ -190,6 +195,7 @@ namespace CoPilot
         public HotkeyNode InputKey10 = new HotkeyNode(Keys.NumPad3);
         public HotkeyNode InputKey11 = new HotkeyNode(Keys.NumPad4);
         public HotkeyNode InputKey12 = new HotkeyNode(Keys.NumPad5);
+        public HotkeyNode InputKeyPickIt = new HotkeyNode(Keys.Space);
         #endregion
 
         #region Confirm
