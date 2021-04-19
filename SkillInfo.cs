@@ -18,6 +18,8 @@ namespace CoPilot
 
         // Pseudo Skills
         internal static Skill autoMapTabber = new Skill();
+        internal static Skill autoSummon = new Skill();
+        internal static Skill VaalSkill = new Skill();
         // Skills
         internal static Skill enduringCry = new Skill();
         internal static Skill rallyingCry = new Skill();
@@ -53,6 +55,9 @@ namespace CoPilot
         internal static Skill punishment = new Skill();
         internal static Skill bladeVortex = new Skill();
         internal static Skill bladeBlast = new Skill();
+        internal static Skill holyRelict = new Skill();
+        internal static Skill berserk = new Skill();
+        internal static Skill sweep = new Skill();
 
         internal static void ResetSkills()
         {
@@ -90,6 +95,9 @@ namespace CoPilot
             punishment = new Skill();
             bladeVortex = new Skill();
             bladeBlast = new Skill();
+            holyRelict = new Skill();
+            berserk = new Skill();
+            sweep = new Skill();
         }
         public static void GetDeltaTime()
         {
@@ -98,7 +106,7 @@ namespace CoPilot
             lastTime = now;
             deltaTime = dT;
         }
-        internal static bool ManageCooldown(Skill skill, ActorSkill actorSkill, float customCooldown = 0)
+        internal static bool ManageCooldown(Skill skill, ActorSkill actorSkill)
         {
             if (skill.Cooldown > 0)
             {
@@ -106,22 +114,20 @@ namespace CoPilot
                 return false;
             }
             
-            if (skill.Cooldown == 0 && actorSkill.TotalUses != skill.LastUsed)
+            if (actorSkill.RemainingUses <= 0  && actorSkill.IsOnCooldown)
             {
-                skill.Cooldown = customCooldown == 0 ? actorSkill.Cooldown*100 : customCooldown;
-                skill.LastUsed = actorSkill.TotalUses;
                 return false;
             }
             if (!CoPilot.instance.GCD())
                 return false;
+
             actorSkill.Stats.TryGetValue(GameStat.ManaCost, out int manaCost);
             if (CoPilot.instance.player.CurMana < manaCost)
             {
                 return false;
             }
-            if (skill.Cooldown == 0)
-                return true;
-            return false;
+
+            return true;
         }
 
         internal static bool ManageCooldown(Skill skill)
@@ -298,6 +304,19 @@ namespace CoPilot
                 else if (skill.InternalName == "blade_burst")
                 {
                     bladeBlast.Id = skill.Id;
+                }
+                else if (skill.InternalName == "summon_relic")
+                {
+                    holyRelict.Id = skill.Id;
+                }
+                else if (skill.InternalName == "berserk")
+                {
+                    berserk.Id = skill.Id;
+                    berserk.BuffName = "berserk";
+                }
+                else if (skill.InternalName == "sweep")
+                {
+                    sweep.Id = skill.Id;
                 }
             }
         }
