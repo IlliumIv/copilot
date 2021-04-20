@@ -54,6 +54,7 @@ namespace CoPilot
         internal static Skill convocation = new Skill();
         internal static Skill punishment = new Skill();
         internal static Skill bladeVortex = new Skill();
+        internal static Skill plagueBearer = new Skill();
         internal static Skill bladeBlast = new Skill();
         internal static Skill holyRelict = new Skill();
         internal static Skill berserk = new Skill();
@@ -94,6 +95,7 @@ namespace CoPilot
             convocation = new Skill();
             punishment = new Skill();
             bladeVortex = new Skill();
+            plagueBearer = new Skill();
             bladeBlast = new Skill();
             holyRelict = new Skill();
             berserk = new Skill();
@@ -300,6 +302,11 @@ namespace CoPilot
                 {
                     bladeVortex.Id = skill.Id;
                     bladeVortex.BuffName = "new_new_blade_vortex";
+                }
+                else if (skill.InternalName == "corrosive_shroud")
+                {
+                    plagueBearer.Id = skill.Id;
+                    plagueBearer.BuffName = "corrosive_shroud";
                 }
                 else if (skill.InternalName == "blade_burst")
                 {
