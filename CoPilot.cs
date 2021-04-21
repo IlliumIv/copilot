@@ -482,7 +482,8 @@ namespace CoPilot
                     vaalSkills = localPlayer.GetComponent<Actor>().ActorVaalSkills;
                     playerPosition = GameController.Player.Pos;
 
-                    try { enemys = GameController.Entities.Where(x => x != null && x.IsValid && x.IsAlive && x.IsHostile && !x.IsHidden && x.IsTargetable && x.HasComponent<Monster>() && x.HasComponent<Life>() && x.GetComponent<Life>().CurHP > 0 && !HasStat(x, GameStat.CannotBeDamaged) && GameController.Window.GetWindowRectangleTimeCache.Contains(GameController.Game.IngameState.Camera.WorldToScreen(x.Pos))).ToList(); }
+                    try { enemys = GameController.Entities.Where(x => x != null && x.IsValid && x.IsAlive && x.IsHostile && !x.IsHidden && x.IsTargetable && x.HasComponent<Monster>() && x.HasComponent<Life>() && x.GetComponent<Life>().CurHP > 0 && !HasStat(x, GameStat.CannotBeDamaged) &&
+                        GameController.Window.GetWindowRectangleTimeCache.Contains(GameController.Game.IngameState.Camera.WorldToScreen(x.Pos))).ToList(); }
                     catch (NullReferenceException) { }
 
                     if (Settings.offeringsEnabled || Settings.autoZombieEnabled)
@@ -549,7 +550,7 @@ namespace CoPilot
                     // Currently thats unanavailable in API.
                     foreach (var skill in skills)
                     {
-                        if (!skill.IsOnSkillBar || skill.SkillSlotIndex < 1 || skill.SkillSlotIndex == 2)
+                        if (!skill.IsOnSkillBar || skill.SkillSlotIndex < 1 || skill.SkillSlotIndex == 2 || !skill.CanBeUsed)
                             continue;
 
                         #region Mirage Archer
