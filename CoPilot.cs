@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -480,14 +480,17 @@ namespace CoPilot
                     vaalSkills = localPlayer.GetComponent<Actor>().ActorVaalSkills;
                     playerPosition = GameController.Player.Pos;
 
+
+                    // Try Catch Madness: Fixing TC Fork Error Spam due to Entity Handling within the Hud.
                     try { enemys = GameController.Entities.Where(x => x != null && x.IsValid && x.IsAlive && x.IsHostile && !x.IsHidden && x.IsTargetable && x.HasComponent<Monster>() && x.HasComponent<Life>() && x.GetComponent<Life>().CurHP > 0 && !HasStat(x, GameStat.CannotBeDamaged) &&
                         GameController.Window.GetWindowRectangleTimeCache.Contains(GameController.Game.IngameState.Camera.WorldToScreen(x.Pos))).ToList(); }
-                    catch (NullReferenceException e) { if (Settings.debugMode) throw e; }
-
-                    if (Settings.offeringsEnabled || Settings.autoZombieEnabled)
-                        corpses = GameController.Entities.Where(x => x.IsValid && !x.IsHidden && x.IsHostile && x.IsDead && x.IsTargetable && x.HasComponent<Monster>()).ToList();
-                    if (Settings.autoGolemEnabled) { }
-                        summons.UpdateSummons();
+                    catch (Exception e) { if (Settings.debugMode) throw e; }
+                    try { if (Settings.offeringsEnabled || Settings.autoZombieEnabled)
+                        corpses = GameController.Entities.Where(x => x.IsValid && !x.IsHidden && x.IsHostile && x.IsDead && x.IsTargetable && x.HasComponent<Monster>()).ToList(); }
+                    catch (Exception e) { if (Settings.debugMode) throw e; }
+                    try { if (Settings.autoGolemEnabled) { }
+                        summons.UpdateSummons(); }
+                    catch (Exception e) { if (Settings.debugMode) throw e; }
 
                     SkillInfo.GetDeltaTime();
 
@@ -594,20 +597,31 @@ namespace CoPilot
                         }
                         #endregion
 
-                        #region Phase Run
+                        #region Phase Run / WitherStep
                         if (Settings.phaserunEnabled)
                         {
                             try
                             {
+                                if (skill.Id == SkillInfo.witherStep.Id)
+                                {
+                                    if (SkillInfo.ManageCooldown(SkillInfo.witherStep, skill))
+                                    {
+                                        if (!isAttacking && isMoving )
+                                        {
+                                            KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                            SkillInfo.phaserun.Cooldown = 250;
+                                        }
+                                    }
+                                }
                                 if (skill.Id == SkillInfo.phaserun.Id)
                                 {
                                     if(SkillInfo.ManageCooldown(SkillInfo.phaserun, skill))
                                     {
-                                        if (!Settings.phaserunUseLifeTap && !isAttacking && isMoving && !buffs.Exists(b => b.Name == "slither") && (!buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer < 0.1)))
+                                        if (!Settings.phaserunUseLifeTap && !isAttacking && isMoving && !buffs.Exists(b => b.Name == SkillInfo.witherStep.BuffName) && (!buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer > 0.1)))
                                         {
                                             KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         }
-                                        if (Settings.phaserunUseLifeTap && (!buffs.Exists(b => b.Name == "lifetab_buff" && b.Timer < 0.1) && MonsterCheck(1000,1,0,0) || !buffs.Exists(b => b.Name == "slither") && !buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer < 0.1 && isMoving)))
+                                        if (Settings.phaserunUseLifeTap && isMoving && ((!buffs.Exists(b => b.Name == "lifetap_buff" && b.Timer > 0.1) && MonsterCheck(1000,1,0,0)) || !buffs.Exists(b => b.Name == SkillInfo.witherStep.BuffName) && !buffs.Exists(b => b.Name == SkillInfo.phaserun.BuffName && b.Timer > 0.1)))
                                         {
                                             KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         }
@@ -654,7 +668,7 @@ namespace CoPilot
                                     if (SkillInfo.ManageCooldown(SkillInfo.berserk, skill))
                                     {
                                         skill.Stats.TryGetValue(GameStat.BerserkMinimumRage, out int minRage);
-                                        if (buffs.Exists(x => x.Name == "rage" && x.Charges >= minRage && x.Charges >= Settings.berserkMinRage) && 
+                                        if (buffs.Exists(x => x.Name == "rage" && x.BuffCharges >= minRage && x.BuffCharges >= Settings.berserkMinRage) && 
                                             MonsterCheck(Settings.berserkRange, Settings.berserkMinAny, Settings.berserkMinRare, Settings.berserkMinUnique))
                                         {
                                             KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
@@ -805,9 +819,9 @@ namespace CoPilot
                                 if ((DateTime.Now - lastStackSkill).TotalMilliseconds > 250 &&
                                     (skill.Id == SkillInfo.divineIre.Id || skill.Id == SkillInfo.scourgeArror.Id || skill.Id == SkillInfo.bladeFlurry.Id))
                                 {
-                                    if (buffs.Exists(b => (b.Name == SkillInfo.divineIre.BuffName && b.Charges >= Settings.divineIreStacks.Value) ||
-                                    (b.Name == SkillInfo.bladeFlurry.BuffName && b.Charges >= Settings.divineIreStacks) ||
-                                    (b.Name == SkillInfo.scourgeArror.BuffName && b.Charges >= Settings.divineIreStacks)))
+                                    if (buffs.Exists(b => (b.Name == SkillInfo.divineIre.BuffName && b.BuffCharges >= Settings.divineIreStacks.Value) ||
+                                    (b.Name == SkillInfo.bladeFlurry.BuffName && b.BuffCharges >= Settings.divineIreStacks) ||
+                                    (b.Name == SkillInfo.scourgeArror.BuffName && b.BuffCharges >= Settings.divineIreStacks)))
                                     {
 
                                         if (Settings.divineIreWaitForInfused)
@@ -1070,7 +1084,7 @@ namespace CoPilot
                                     if (SkillInfo.ManageCooldown(SkillInfo.bladeVortex, skill))
                                     {
                                         
-                                        if (GetMonsterWithin(Settings.bladeVortexRange) > 0 && !buffs.Exists(x => x.Name == "blade_vortex_counter" && x.Charges >= Settings.bladeVortexCount))
+                                        if (GetMonsterWithin(Settings.bladeVortexRange) > 0 && !buffs.Exists(x => x.Name == "blade_vortex_counter" && x.BuffCharges >= Settings.bladeVortexCount))
                                         {
                                             KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                             SkillInfo.bladeVortex.Cooldown = unleashCooldown > 0 ? unleashCooldown * Settings.bladeVortexUnleashCount : 0;
@@ -1157,7 +1171,7 @@ namespace CoPilot
                     {
                         try
                         {
-                            if ((DateTime.Now - lastDelveFlare).TotalMilliseconds > 1000 && (player.ESPercentage < (Settings.delveFlareEsBelow / 100) || player.HPPercentage < (Settings.delveFlareHpBelow / 100)) && buffs.Exists(x => x.Name == "delve_degen_buff" && x.Charges >= Settings.delveFlareDebuffStacks))
+                            if ((DateTime.Now - lastDelveFlare).TotalMilliseconds > 1000 && (player.ESPercentage < (Settings.delveFlareEsBelow / 100) || player.HPPercentage < (Settings.delveFlareHpBelow / 100)) && buffs.Exists(x => x.Name == "delve_degen_buff" && x.BuffCharges >= Settings.delveFlareDebuffStacks))
                             {
                                 KeyPress(Settings.delveFlareKey.Value);
                                 lastDelveFlare = DateTime.Now;

@@ -59,6 +59,7 @@ namespace CoPilot
         internal static Skill holyRelict = new Skill();
         internal static Skill berserk = new Skill();
         internal static Skill sweep = new Skill();
+        internal static Skill witherStep = new Skill();
 
         internal static void ResetSkills()
         {
@@ -100,6 +101,7 @@ namespace CoPilot
             holyRelict = new Skill();
             berserk = new Skill();
             sweep = new Skill();
+            witherStep = new Skill();
         }
         public static void GetDeltaTime()
         {
@@ -324,6 +326,11 @@ namespace CoPilot
                 else if (skill.InternalName == "sweep")
                 {
                     sweep.Id = skill.Id;
+                }
+                else if (skill.InternalName == "slither")
+                {
+                    witherStep.Id = skill.Id;
+                    witherStep.BuffName = "slither";
                 }
             }
         }
