@@ -544,7 +544,7 @@ namespace CoPilot
                     #endregion
 
                     // Do not Cast anything while we are untouchable or Chat is Open
-                    if (buffs.Exists(x => x.Name == "grace_period") || GameController.IngameState.IngameUi.ChatBox.Parent.Parent.Parent.GetChildAtIndex(3).IsVisible)
+                    if (buffs.Exists(x => x.Name == "grace_period") || GameController.IngameState.IngameUi.ChatBox.Parent.Parent.Parent.GetChildAtIndex(3).IsVisible || !GameController.IsForeGroundCache)
                         return;
 
                     // Still waiting for proper Skill.cooldown / Skill.isReady to add to the Loop.
@@ -1136,7 +1136,6 @@ namespace CoPilot
                                 // What should a proper Detonator do and when ?
                                 // Detonate Mines when they have the chance to hit a target (Range), include min. mines ?
                                 // Internal delay 500-1000ms ?
-                                // Removing/Filter enemys that are not "deployed" yet / invunerale from enemys list ? 
                             }
                             catch (Exception e)
                             {
